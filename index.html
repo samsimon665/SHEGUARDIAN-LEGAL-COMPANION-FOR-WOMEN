@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SheGuardian Chatbot</title>
+
+    <!-- Bootstrap & FontAwesome -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Translate API -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement(
+                { pageLanguage: 'en', includedLanguages: 'en,hi,ml,ta,te,bn,fr,de,es,zh,ar', layout: google.translate.TranslateElement.InlineLayout.SIMPLE },
+                'google_translate_element'
+            );
+        }
+
+        function setTranslator() {
+            var lang = localStorage.getItem("selectedLanguage");
+            if (lang) {
+                var selectElement = document.querySelector(".goog-te-combo");
+                if (selectElement) {
+                    selectElement.value = lang;
+                    selectElement.dispatchEvent(new Event("change"));
+                }
+            }
+        }
+
+        function saveLanguagePreference() {
+            var selectElement = document.querySelector(".goog-te-combo");
+            if (selectElement) {
+                selectElement.addEventListener("change", function() {
+                    localStorage.setItem("selectedLanguage", this.value);
+                });
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            setTranslator();
+            saveLanguagePreference();
+        });
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</head>
+<body>
+    <div class="container-fluid h-100">
+        <div class="row justify-content-center h-100">
+            <div class="col-md-8 col-xl-6 chat">
+                <div class="card">
+                    <div class="card-header msg_head text-left d-flex align-items-center"> 
+                        <div class="img_cont mr-2">
+                            <img src="https://cdn4.iconfinder.com/data/icons/chatbot-robot-1/100/chatbot_01_01_03_bot_chat_robot_app_artificial_chatbot_dialog-1024.png" class="rounded-circle user_img">
+                            <span class="online_icon"></span>
+                        </div>
+                        <div class="user_info">
+                            <span class="font-weight-bold" style="font-size: 2rem;">SheGuardian</span>
+                        </div>
+                        <div id="google_translate_element" class="ml-auto"></div>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div id="messageFormeight" class="card-body msg_card_body"></div>
+
+                    <!-- Chat Input -->
+                    <div class="card-footer">
+                        <form id="messageArea" class="input-group">
+                            <!-- File Upload Button (New) -->
+                            <div class="input-group-prepend">
+                                <button type="button" id="fileUploadBtn" class="input-group-text send_btn" aria-label="Upload File">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <input type="file" id="fileInput" style="display: none;">
+                            </div>
+
+                            <!-- Voice Input Button -->
+                            <div class="input-group-prepend">
+                                <button type="button" id="voiceInput" class="input-group-text send_btn" aria-label="Voice Input">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                            </div>
+
+                            <!-- Text Input Box -->
+                            <input type="text" id="text" name="msg" placeholder="Type your message..." autocomplete="off" class="form-control type_msg" required/>
+
+                            <!-- Send Button -->
+                            <div class="input-group-append">
+                                <button type="submit" id="send" class="input-group-text send_btn" aria-label="Send Message">
+                                    <i class="fas fa-location-arrow"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery & Script -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Fetch and display the initial greeting message
+            $.get('/get_greeting', function(data) {
+                var botHtml = '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://tse2.mm.bing.net/th?id=OIP.lvzbe_7dosvo5y1P5iQZfAHaHa&pid=Api&P=0&h=180" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' + data + '</div></div>';
+                $("#messageFormeight").append($.parseHTML(botHtml));
+            });
+
+            // Handle the message submission
+            $("#messageArea").on("submit", function(event) {
+                event.preventDefault();
+                const date = new Date();
+                const str_time = date.getHours() + ":" + date.getMinutes();
+
+                var rawText = $("#text").val();
+
+                var userHtml = '<div class="d-flex justify-content-end mb-4"><div class="msg_cotainer_send">' + rawText + '<span class="msg_time_send">' + str_time + '</span></div><div class="img_cont_msg"><img src="https://cdn-icons-png.flaticon.com/512/8569/8569076.png" class="rounded-circle user_img_msg"></div></div>';
+                $("#text").val(""); 
+                $("#messageFormeight").append(userHtml);
+
+                // Send message to the backend
+                $.ajax({
+                    data: { msg: rawText },
+                    type: "POST",
+                    url: "/get",
+                }).done(function(data) {
+                    var botHtml = '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://tse2.mm.bing.net/th?id=OIP.lvzbe_7dosvo5y1P5iQZfAHaHa&pid=Api&P=0&h=180" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' + data.response + '<span class="msg_time">' + str_time + '</span></div></div>';
+                    $("#messageFormeight").append($.parseHTML(botHtml));
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error("Error:", textStatus, errorThrown);
+                });
+            });
+
+            // Voice input functionality
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            $("#voiceInput").on("click", function() {
+                recognition.start();
+            });
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                $("#text").val(transcript);
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech recognition error:", event.error);
+            };
+
+            // File Upload Button Click
+            $("#fileUploadBtn").on("click", function() {
+                $("#fileInput").click();
+            });
+
+            // Handle file selection and upload
+            $("#fileInput").on("change", function() {
+                var file = this.files[0];
+                if (file) {
+                    var formData = new FormData();
+                    formData.append("file", file);
+
+                    $.ajax({
+                        url: "/upload",
+                        type: "POST",
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            alert("File uploaded successfully: " + response.filename);
+                        },
+                        error: function(error) {
+                            alert("File upload failed!");
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
